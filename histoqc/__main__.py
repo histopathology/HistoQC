@@ -45,7 +45,7 @@ def main(argv=None):
                         default="",
                         type=str)
     parser.add_argument('-c', '--config',
-                        help="config file to use",
+                        help="config file to use, either by name supplied by histoqc.config (e.g., v2.1) or filename",
                         type=str)
     parser.add_argument('-f', '--force',
                         help="force overwriting of existing files",
@@ -75,8 +75,11 @@ def main(argv=None):
     if not args.config:
         lm.logger.warning(f"Configuration file not set (--config), using default")
         config.read_string(read_config_template('default'))
+    elif os.path.exists(args.config):
+        config.read(args.config) #Will read the config file
     else:
-        config.read(args.config)
+        lm.logger.warning(f"Configuration file {args.config} assuming to be a template...checking.")
+        config.read_string(read_config_template(args.config))
 
     # --- provide models, pen and templates as fallbacks from package data ----
 
