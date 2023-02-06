@@ -47,7 +47,7 @@ class _ManagedPkgData(ContextDecorator):
                 TemporaryDirectory(prefix=".histoqc_pkg_data_tmp", dir=os.getcwd())
             )
             for rsrc in {'models', 'pen', 'templates'}:
-                package_resource_copytree('histoqc.data', rsrc, self._tmp_dir)
+                package_resource_copytree('histoqc.data', rsrc, self._tmp_dir, None)
         return self._tmp_dir
 
     def inject_pkg_data_fallback(self, config: ConfigParser):
@@ -117,7 +117,7 @@ managed_pkg_data = _ManagedPkgData()
 
 # --- helper functions ------------------------------------------------
 
-def package_resource_copytree(package, resource, dest):
+def package_resource_copytree(package, resource, dest, result):
     """helper for copying a package resource to a destination
 
     Parameters
@@ -145,7 +145,12 @@ def package_resource_copytree(package, resource, dest):
 
         if traversable.is_file():
             pth.write_bytes(traversable.read_bytes())
-
+            
+            # add default result file name as global variable
+            if result and name == 'global_config.js':
+                with open(pth, 'a') as f:
+                    f.write(f"// Default result file name \nvar DEFAULT_RESULT_FILE_NAME = \"{result}\";")
+                     
         elif traversable.is_dir():
             pth.mkdir(exist_ok=True)
             for t in traversable.iterdir():
