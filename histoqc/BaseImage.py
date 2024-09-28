@@ -8,7 +8,7 @@ import re
 from typing import Union, Tuple
 #os.environ['PATH'] = 'C:\\research\\openslide\\bin' + ';' + os.environ['PATH'] #can either specify openslide bin path in PATH, or add it dynamically
 from histoqc.import_wrapper.openslide import openslide
-
+from skimage import measure, morphology
 # there is no branch reset group in re
 # compatible with the previous definition of valid input: leading zero and leading decimals are supported
 _REGEX_MAG = r"^(\d?\.?\d*X?)"
@@ -18,7 +18,7 @@ MAG_NA = None
 
 class BaseImage(dict):
 
-    def __init__(self, fname, fname_outdir, params):
+    def __init__(self, fname, fname_outdir, seed, params):
         dict.__init__(self)
 
         self.in_memory_compression = strtobool(params.get("in_memory_compression", "False"))
@@ -31,6 +31,7 @@ class BaseImage(dict):
         self.addToPrintList("comments", " ")
 
         self["outdir"] = fname_outdir
+        self["seed"] = seed
         self["dir"] = os.path.dirname(fname)
 
         self["os_handle"] = openslide.OpenSlide(fname)
@@ -205,6 +206,9 @@ class BaseImage(dict):
                 self[key] = getBestThumb(self, bx, by, target_dims, target_sampling_factor)
         return self[key]
 
+'''
+the following are helper functions 
+'''
 def getBestThumb(s: BaseImage, x: int, y: int, dims: Tuple[int, int], target_sampling_factor: float):
     osh = s["os_handle"]
     
@@ -223,9 +227,7 @@ def getBestThumb(s: BaseImage, x: int, y: int, dims: Tuple[int, int], target_sam
     else:
         return resizeTileDownward(s, target_sampling_factor, level)
         
-'''
-the followings are helper functions 
-'''
+
 def resizeTileDownward(self, target_downsampling_factor, level):
     osh = self["os_handle"]
     (bx, by, bwidth, bheight) = self["img_bbox"]
@@ -340,3 +342,22 @@ def getDimensionsByOneDim(s: BaseImage, dim: int) -> Tuple[int, int]:
     else:
         w = int(dim * width / height)
         return w, dim
+
+
+def getMaskRegionsStats(img)-> dict:
+
+    rps = measure.regionprops(morphology.label(img))
+    if rps:
+        areas = np.asarray([rp.area for rp in rps])
+        num = len(rps)
+        area_min = areas.min()
+        area_max = areas.max()
+        area_mean = areas.mean()
+    else:
+        num = area_min = area_max = area_mean = 0
+    return {
+        'num': num,
+        'area_min': area_min,
+        'area_max': area_max,
+        'area_mean': area_mean
+    }
